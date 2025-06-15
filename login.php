@@ -1,42 +1,25 @@
-
-
-<html>
- <head>
- testpage
- </head>
- <body>
- 
-
 <?php
-include("config.php");
 session_start();
-//get user input
-$a=$_POST['username'];
-$b=$_POST['passwd'];
-$query = "select * from register where username='$a' AND password='$b'";
+include("config.php");
 
-$result=mysqli_query($db, $query) or die('Error querying database.');
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = $_POST['username']; // No sanitization
+    $password = $_POST['password'];
 
-//fetch from database
+    $query = "SELECT * FROM users WHERE username = '$username' AND password = '$password'";
+    $result = mysqli_query($conn, $query);
 
-
-if($row = mysqli_fetch_array($result)) {
- $_SESSION['login_user']=$row["username"];
-  header("Location: /vulnerable/settings.php");
+    if (mysqli_num_rows($result) == 1) {
+        $_SESSION['user'] = $username;
+        echo "Login successful!";
+    } else {
+        echo "Invalid credentials.";
+    }
 }
-else
-{
-	echo 'not auhorized';
-	header("Location: /vulnerable/index.html");
-}
-//close database
-mysqli_close($db);
 ?>
-<script>
-if(top != window) {
-  top.location = window.location
-}
 
-</script>
-</body>
-</html>
+<form method="post">
+    Username: <input type="text" name="username">
+    Password: <input type="password" name="password">
+    <input type="submit" value="Login">
+</form>
