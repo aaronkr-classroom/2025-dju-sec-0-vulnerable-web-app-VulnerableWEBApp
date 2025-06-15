@@ -1,55 +1,61 @@
 <?php
 include("config.php");
 session_start();
-//get post parameters
-$user=$_SESSION['login_user']; //getting username from session 
-$em=$_POST['email'];
-$gen=$_POST['gender'];
 
-//check session else redirect to login page
-$check=$_SESSION['login_user'];
-if($check==NULL )
-{
-	header("Location: /vulnerable/index.html");
+// Validate session
+if (!isset($_SESSION['login_user'])) {
+    header("Location: /vulnerable/index.html");
+    exit();
 }
 
-//check values else redirect to settings page
-if($check!=NULL && ($em==NULL || $gen==NULL) )
-{
-header("Location: /vulnerable/settings.php");	
+// CSRF token check
+if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+    die("CSRF token validation failed.");
 }
 
+// Get and sanitize input
+$user = $_SESSION['login_user'];
+$em = trim($_POST['email']);
+$gen = trim($_POST['gender']);
 
-
-//update information
-
-$sql="UPDATE register SET  email='$em', gender='$gen' where username='$user'";
-echo $sql;
-$result=mysqli_query($db, $sql) or die('Error querying database.');
-
-if( mysqli_affected_rows($db)>0)
-{
-	echo "</br>";
-echo "<h2>Account updated successfully</h2>";
- }
- else {
-	 echo "</br>";
-    echo "<h2>No modification done to profile</h2>" ;
-
+// Basic validation
+if (empty($em) || empty($gen)) {
+    header("Location: /vulnerable/settings.php");
+    exit();
 }
 
-mysqli_close($db); 
+// Prepare SQL to prevent SQLi
+$stmt = $db->prepare("UPDATE register SET email = ?, gender = ? WHERE username = ?");
+$stmt->bind_param("sss", $em, $gen, $user);
+$stmt->execute();
 
+// Output result
+$msg = "";
+if ($stmt->affected_rows > 0) {
+    $msg = "Account updated successfully.";
+} else {
+    $msg = "No modification done to profile.";
+}
+
+$stmt->close();
+mysqli_close($db);
 ?>
-<html>
-<body>
-</br>
-<script>
-if(top != window) {
-  top.location = window.location
-}
 
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta charset="UTF-8">
+</head>
+<body>
+<br>
+<h2><?php echo htmlspecialchars($msg); ?></h2>
+<a href="/vulnerable/settings.php"><h3>Go back</h3></a>
+
+<script>
+if (top !== window) {
+  top.location = window.location;
+}
 </script>
-<a href="/vulnerable/settings.php" > <h3>Go back</h3> </a>
 </body>
 </html>
